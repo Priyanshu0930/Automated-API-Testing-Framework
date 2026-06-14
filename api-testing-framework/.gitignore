@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated reports (keep the directory, ignore generated files)
+reports/*.html
+reports/*.log
+!reports/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.DS_Store

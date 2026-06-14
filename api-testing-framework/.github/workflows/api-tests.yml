@@ -1,0 +1,142 @@
+name: API Test Suite
+
+# ─────────────────────────────────────────────────────────────
+# Triggers
+# ─────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    # Run the full suite every day at 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      marker:
+        description: "Pytest marker to run (e.g. smoke, regression, negative)"
+        required: false
+        default: ""
+
+# ─────────────────────────────────────────────────────────────
+# Cancel in-progress runs on the same branch/PR
+# ─────────────────────────────────────────────────────────────
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Parallel matrix: Python 3.10 and 3.11 ──────────────────
+  test:
+    name: "Tests – Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up the requested Python version
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # 3. Install project dependencies
+      - name: Install dependencies
+        working-directory: api-testing-framework
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Create reports directory (pytest-html will write here)
+      - name: Create reports directory
+        working-directory: api-testing-framework
+        run: mkdir -p reports
+
+      # 5a. Run full suite (default / scheduled / push)
+      - name: Run test suite (full)
+        if: ${{ github.event.inputs.marker == '' }}
+        working-directory: api-testing-framework
+        run: |
+          pytest \
+            --html=reports/report.html \
+            --self-contained-html \
+            -v \
+            --tb=short \
+            -n auto
+        continue-on-error: true        # upload artefacts even on failure
+
+      # 5b. Run filtered suite (manual trigger with marker)
+      - name: Run test suite (filtered by marker)
+        if: ${{ github.event.inputs.marker != '' }}
+        working-directory: api-testing-framework
+        run: |
+          pytest \
+            -m "${{ github.event.inputs.marker }}" \
+            --html=reports/report.html \
+            --self-contained-html \
+            -v \
+            --tb=short
+        continue-on-error: true
+
+      # 6. Upload HTML report & log as artefacts
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-py${{ matrix.python-version }}
+          path: |
+            api-testing-framework/reports/report.html
+            api-testing-framework/reports/test_run.log
+            api-testing-framework/reports/framework.log
+          retention-days: 30
+
+  # ── Smoke-only gate on PRs ──────────────────────────────────
+  smoke-check:
+    name: "Smoke Check (PR gate)"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: []          # runs in parallel with the matrix job
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: api-testing-framework
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create reports directory
+        working-directory: api-testing-framework
+        run: mkdir -p reports
+
+      - name: Run smoke tests
+        working-directory: api-testing-framework
+        run: |
+          pytest -m smoke \
+            --html=reports/smoke-report.html \
+            --self-contained-html \
+            -v --tb=short
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: api-testing-framework/reports/smoke-report.html
+          retention-days: 7

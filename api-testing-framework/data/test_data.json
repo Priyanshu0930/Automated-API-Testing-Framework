@@ -1,0 +1,69 @@
+{
+  "_comment": "External test-data file consumed by fixtures and parametrized tests.",
+
+  "base_url": "https://jsonplaceholder.typicode.com",
+
+  "response_time_threshold_ms": 3000,
+
+  "users": {
+    "valid_id": 1,
+    "invalid_id": 9999,
+    "expected_fields": ["id", "name", "username", "email", "address", "phone", "website", "company"],
+    "new_user": {
+      "name": "John QA Engineer",
+      "username": "john_qa",
+      "email": "john.qa@testframework.com",
+      "phone": "1-800-QA-TESTS",
+      "website": "qa-framework.dev"
+    },
+    "update_user": {
+      "name": "Jane Updated",
+      "username": "jane_updated",
+      "email": "jane.updated@testframework.com"
+    },
+    "patch_user": {
+      "email": "patched.email@testframework.com"
+    }
+  },
+
+  "posts": {
+    "valid_id": 1,
+    "invalid_id": 9999,
+    "expected_fields": ["userId", "id", "title", "body"],
+    "new_post": {
+      "userId": 1,
+      "title": "Automated API Test Post",
+      "body": "This post was created by the PyTest API testing framework."
+    },
+    "update_post": {
+      "userId": 1,
+      "id": 1,
+      "title": "Updated Post Title",
+      "body": "This post body has been fully replaced by a PUT request."
+    },
+    "patch_post": {
+      "title": "Patched Post Title"
+    }
+  },
+
+  "negative_tests": {
+    "invalid_endpoints": [
+      "/nonexistent",
+      "/users/abc",
+      "/posts/-1"
+    ],
+    "invalid_payloads": [
+      {},
+      {"unknown_field": "garbage_value"},
+      null
+    ],
+    "missing_fields_post": {
+      "title": "Post without required body field"
+    }
+  },
+
+  "parametrize": {
+    "user_ids": [1, 2, 3, 5, 10],
+    "post_ids": [1, 5, 10, 50, 100]
+  }
+}

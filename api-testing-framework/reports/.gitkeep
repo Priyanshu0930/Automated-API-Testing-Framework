@@ -1,0 +1,2 @@
+# This file keeps the reports/ directory tracked in git.
+# Actual report files (*.html, *.log) are generated at runtime and should be gitignored.
